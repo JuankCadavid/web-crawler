@@ -1,0 +1,81 @@
+:root {
+  /* IGAD Brand Colors - From Figma */
+  --color-primary: #016630;           /* Deep green - primary brand */
+  --color-primary-light: #00A63E;     /* Lighter green for buttons */
+  --color-secondary: #008236;         /* Medium green */
+  --color-accent: #155DFC;            /* Blue accent */
+  
+  /* Background Colors */
+  --color-background: #FFFFFF;        /* White background */
+  --color-surface: #FFFFFF;           /* White surface */
+  --color-hero-bg: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%);
+  
+  /* Text Colors */
+  --color-text-primary: #101828;      /* Primary text */
+  --color-text-secondary: #4A5565;    /* Secondary text */
+  --color-text-muted: #364153;        /* Muted text */
+  
+  /* Border Colors */
+  --color-border: #E5E7EB;            /* Default border */
+  --color-border-green: #B9F8CF;      /* Green border */
+  --color-border-hero: #DCFCE7;       /* Hero section border */
+  
+  /* Background Variants */
+  --color-bg-green-light: #DCFCE7;    /* Light green background */
+  --color-bg-gray-light: #F3F4F6;     /* Light gray background */
+  --color-bg-white-transparent: rgba(255, 255, 255, 0.8);
+  
+  /* Status Colors */
+  --color-success: #00A63E;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #155DFC;
+
+  /* Typography - Arial font system */
+  --font-family-sans: 'Arial', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-weight-normal: 400;
+
+  /* Spacing - From Figma measurements */
+  --spacing-8: 8px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-32: 32px;
+  --spacing-48: 48px;
+  --spacing-64: 64px;
+
+  /* Border Radius - From Figma */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-full: 2.68435e+07px;
+
+  /* Shadows - From Figma */
+  --shadow-card: 0px 10px 15px -3px rgba(0, 0, 0, 0.1), 0px 4px 6px -4px rgba(0, 0, 0, 0.1);
+
+  /* Layout */
+  --max-width-container: 1248px;
+  --header-height: 64px;
+  --sidebar-width: 280px;
+}
+
+/* Utility classes */
+.text-primary { color: var(--color-primary); }
+.text-secondary { color: var(--color-secondary); }
+.text-accent { color: var(--color-accent); }
+.text-primary-text { color: var(--color-text-primary); }
+.text-secondary-text { color: var(--color-text-secondary); }
+.text-muted { color: var(--color-text-muted); }
+
+.bg-primary { background-color: var(--color-primary); }
+.bg-primary-light { background-color: var(--color-primary-light); }
+.bg-secondary { background-color: var(--color-secondary); }
+.bg-accent { background-color: var(--color-accent); }
+.bg-surface { background-color: var(--color-surface); }
+.bg-green-light { background-color: var(--color-bg-green-light); }
+.bg-gray-light { background-color: var(--color-bg-gray-light); }
+
+.border-default { border-color: var(--color-border); }
+.border-green { border-color: var(--color-border-green); }
+
+.shadow-card { box-shadow: var(--shadow-card); }
+.rounded-card { border-radius: var(--radius-md); }
+.rounded-button { border-radius: var(--radius-sm); }

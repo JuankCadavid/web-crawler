@@ -1,0 +1,628 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: IGAD Innovations Hub - Serverless Infrastructure
+
+Parameters:
+  Environment:
+    Type: String
+    Default: test
+    AllowedValues: [test, prod]
+    Description: Environment name
+  
+  DomainName:
+    Type: String
+    Default: ""
+    Description: Custom domain name (optional)
+  
+  CertificateArn:
+    Type: String
+    Default: ""
+    Description: ACM certificate ARN for custom domain
+
+Mappings:
+  EnvironmentConfig:
+    test:
+      AuroraMinCapacity: 0.5
+      AuroraMaxCapacity: 2
+      LambdaMemorySize: 512
+      LambdaTimeout: 30
+      LogRetentionDays: 14
+      AutoPause: true
+    prod:
+      AuroraMinCapacity: 2
+      AuroraMaxCapacity: 16
+      LambdaMemorySize: 1024
+      LambdaTimeout: 30
+      LogRetentionDays: 14
+      AutoPause: false
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    MemorySize: !FindInMap [EnvironmentConfig, !Ref Environment, LambdaMemorySize]
+    Timeout: !FindInMap [EnvironmentConfig, !Ref Environment, LambdaTimeout]
+    Environment:
+      Variables:
+        NODE_ENV: !Ref Environment
+        DB_HOST: !GetAtt AuroraCluster.Endpoint.Address
+        DB_PORT: !GetAtt AuroraCluster.Endpoint.Port
+        DB_NAME: igad_hub
+        COGNITO_USER_POOL_ID: !Ref UserPool
+        COGNITO_CLIENT_ID: !Ref UserPoolClient
+        S3_BUCKET: !Ref DocumentsBucket
+        SQS_SCRAPER_QUEUE: !Ref ScraperQueue
+        SNS_NOTIFICATIONS_TOPIC: !Ref NotificationsTopic
+    ReservedConcurrencyLimit: 50
+    Tracing: Active
+    Layers:
+      - !Ref CommonLayer
+
+Resources:
+  # ===== API GATEWAY (HTTP API for cost optimization) =====
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Environment
+      CorsConfiguration:
+        AllowOrigins:
+          - "https://*.igad-hub.com"
+          - "http://localhost:3000"
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+          - X-Requested-With
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        MaxAge: 600
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            JwtConfiguration:
+              issuer: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}"
+              audience:
+                - !Ref UserPoolClient
+            IdentitySource: "$request.header.Authorization"
+
+  # ===== LAMBDA FUNCTIONS =====
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-common-layer"
+      Description: Common dependencies for IGAD Hub
+      ContentUri: ../backend/layers/common/
+      CompatibleRuntimes:
+        - nodejs20.x
+      RetentionPolicy: Delete
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-api"
+      CodeUri: ../backend/dist/
+      Handler: main.handler
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /{proxy+}
+            Method: ANY
+      Environment:
+        Variables:
+          DB_USERNAME: !Ref DBUsername
+          DB_PASSWORD: !Ref DBPassword
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+      Policies:
+        - VPCAccessPolicy: {}
+        - Statement:
+            - Effect: Allow
+              Action:
+                - rds-data:*
+                - secretsmanager:GetSecretValue
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+                - sqs:SendMessage
+                - sqs:ReceiveMessage
+                - sqs:DeleteMessage
+                - sns:Publish
+                - bedrock:InvokeModel
+                - qbusiness:ChatSync
+              Resource: "*"
+
+  ScraperFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-scraper"
+      CodeUri: ../backend/dist/
+      Handler: scraper.handler
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ScraperQueue.Arn
+            BatchSize: 1
+      Environment:
+        Variables:
+          DB_USERNAME: !Ref DBUsername
+          DB_PASSWORD: !Ref DBPassword
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+      Policies:
+        - VPCAccessPolicy: {}
+        - Statement:
+            - Effect: Allow
+              Action:
+                - rds-data:*
+                - s3:PutObject
+                - opensearch:ESHttpPost
+                - opensearch:ESHttpPut
+              Resource: "*"
+
+  # ===== COGNITO AUTHENTICATION =====
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${AWS::StackName}-users"
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+      MfaConfiguration: OPTIONAL
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: given_name
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: family_name
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: organization
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub "${AWS::StackName}-client"
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+
+  # ===== AURORA SERVERLESS V2 =====
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      DBClusterIdentifier: !Sub "${AWS::StackName}-aurora"
+      Engine: aurora-postgresql
+      EngineMode: provisioned
+      EngineVersion: "15.4"
+      DatabaseName: igad_hub
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: !FindInMap [EnvironmentConfig, !Ref Environment, AuroraMinCapacity]
+        MaxCapacity: !FindInMap [EnvironmentConfig, !Ref Environment, AuroraMaxCapacity]
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref DatabaseSecurityGroup
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: "03:00-04:00"
+      PreferredMaintenanceWindow: "sun:04:00-sun:05:00"
+      StorageEncrypted: true
+      KmsKeyId: !Ref DatabaseKMSKey
+      EnableCloudwatchLogsExports:
+        - postgresql
+      DeletionProtection: !If [IsProd, true, false]
+
+  AuroraInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub "${AWS::StackName}-aurora-instance"
+      DBClusterIdentifier: !Ref AuroraCluster
+      DBInstanceClass: db.serverless
+      Engine: aurora-postgresql
+      PubliclyAccessible: false
+      PerformanceInsightsEnabled: true
+      MonitoringInterval: 60
+      MonitoringRoleArn: !GetAtt RDSEnhancedMonitoringRole.Arn
+
+  # ===== NETWORKING =====
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-vpc"
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-private-subnet-1"
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-private-subnet-2"
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for Aurora cluster
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-db-subnet-group"
+
+  # ===== SECURITY GROUPS =====
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda functions
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Aurora database
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+  # ===== S3 BUCKETS =====
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-documents-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      NotificationConfiguration:
+        CloudWatchConfigurations:
+          - Event: s3:ObjectCreated:*
+            CloudWatchConfiguration:
+              LogGroupName: !Ref S3LogGroup
+
+  StaticAssetsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-static-${AWS::AccountId}"
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+
+  StaticAssetsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StaticAssetsBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontAccess
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${StaticAssetsBucket}/*"
+            Condition:
+              StringEquals:
+                "AWS:SourceArn": !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+
+  # ===== CLOUDFRONT =====
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt StaticAssetsBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+            OriginAccessControlId: !Ref OriginAccessControl
+          - Id: ApiOrigin
+            DomainName: !Sub "${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+            CustomOriginConfig:
+              HTTPPort: 443
+              OriginProtocolPolicy: https-only
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # Managed-CachingOptimized
+          Compress: true
+        CacheBehaviors:
+          - PathPattern: "/api/*"
+            TargetOriginId: ApiOrigin
+            ViewerProtocolPolicy: https-only
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad  # Managed-CachingDisabled
+            OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf  # Managed-CORS-S3Origin
+        Enabled: true
+        DefaultRootObject: index.html
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        PriceClass: PriceClass_100
+        WebACLId: !GetAtt WebACL.Arn
+
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-oac"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # ===== WAF =====
+  WebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub "${AWS::StackName}-waf"
+      Scope: CLOUDFRONT
+      DefaultAction:
+        Allow: {}
+      Rules:
+        - Name: AWSManagedRulesCommonRuleSet
+          Priority: 1
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: CommonRuleSetMetric
+        - Name: RateLimitRule
+          Priority: 2
+          Action:
+            Block: {}
+          Statement:
+            RateBasedStatement:
+              Limit: 2000
+              AggregateKeyType: IP
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: RateLimitMetric
+
+  # ===== SQS & SNS =====
+  ScraperQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-scraper-queue"
+      VisibilityTimeoutSeconds: 180
+      MessageRetentionPeriod: 1209600  # 14 days
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ScraperDLQ.Arn
+        maxReceiveCount: 3
+
+  ScraperDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-scraper-dlq"
+      MessageRetentionPeriod: 1209600  # 14 days
+
+  NotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      DisplayName: IGAD Hub Notifications
+
+  # ===== KMS KEYS =====
+  DatabaseKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for Aurora database encryption
+      KeyPolicy:
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+
+  # ===== CLOUDWATCH LOGS =====
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-api"
+      RetentionInDays: !FindInMap [EnvironmentConfig, !Ref Environment, LogRetentionDays]
+
+  ScraperLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-scraper"
+      RetentionInDays: !FindInMap [EnvironmentConfig, !Ref Environment, LogRetentionDays]
+
+  S3LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/s3/${AWS::StackName}"
+      RetentionInDays: !FindInMap [EnvironmentConfig, !Ref Environment, LogRetentionDays]
+
+  # ===== IAM ROLES =====
+  RDSEnhancedMonitoringRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: monitoring.rds.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole'
+
+  # ===== PARAMETERS =====
+  DBUsername:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/db/username"
+      Type: String
+      Value: igad_admin
+      Description: Database username
+
+  DBPassword:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/db/password"
+      Type: SecureString
+      Value: !Sub "{{resolve:secretsmanager:${AWS::StackName}-db-password:SecretString:password}}"
+      Description: Database password
+
+  # ===== BUDGETS =====
+  CostBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: !Sub "${AWS::StackName}-monthly-budget"
+        BudgetLimit:
+          Amount: !If [IsProd, 85, 25]
+          Unit: USD
+        TimeUnit: MONTHLY
+        BudgetType: COST
+        CostFilters:
+          TagKey: [Project]
+          TagValue: [!Ref AWS::StackName]
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 80
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: admin@igad.org  # TODO: Replace with actual email
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+  HasDomainName: !Not [!Equals [!Ref DomainName, ""]]
+
+Outputs:
+  ApiBaseUrl:
+    Description: Base URL for the API
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+    Export:
+      Name: !Sub "${AWS::StackName}-api-url"
+
+  CloudFrontUrl:
+    Description: CloudFront distribution URL
+    Value: !Sub "https://${CloudFrontDistribution.DomainName}"
+    Export:
+      Name: !Sub "${AWS::StackName}-cloudfront-url"
+
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub "${AWS::StackName}-user-pool-id"
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub "${AWS::StackName}-user-pool-client-id"
+
+  DatabaseEndpoint:
+    Description: Aurora database endpoint
+    Value: !GetAtt AuroraCluster.Endpoint.Address
+    Export:
+      Name: !Sub "${AWS::StackName}-db-endpoint"
+
+  StaticAssetsBucket:
+    Description: S3 bucket for static assets
+    Value: !Ref StaticAssetsBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-static-bucket"
+
+  CloudFrontDistributionId:
+    Description: CloudFront distribution ID
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub "${AWS::StackName}-cloudfront-id"

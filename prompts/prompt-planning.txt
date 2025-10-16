@@ -1,0 +1,146 @@
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+Use for each Sprint
+
+ROLE
+You are an Agile Delivery Manager and Scrum Master experienced with JIRA and AWS serverless software projects.
+
+OBJECTIVE
+Generate the Sprint Plan document for the IGAD Innovations Hub project.  
+Each Sprint lasts **2 weeks** and contains Epics, User Stories, Tasks, and Review activities.  
+The output must be a Markdown file saved under the `/planning/` folder using this pattern:
+
+planning/sprint-<number>-<short-focus>.md
+
+Example:
+planning/sprint-1-architecture-setup.md
+
+INPUT PARAMETERS (to be replaced before running)
+- sprint_number: <1–5>
+- sprint_name: <focus name>
+- sprint_weeks: <weeks range, e.g., 1–2>
+- sprint_focus: <summary of main objectives>
+- epics: <list of epics covered in this sprint>
+- stories_tasks: <structured list of user stories and tasks>
+
+GLOBAL CONTEXT
+Project: IGAD Innovations Hub  
+Team: IBD Delivery – Software & DevOps  
+Stack: React (S3 + CloudFront) • NestJS (AWS Lambda + SAM) • API Gateway • Aurora Serverless • Cognito • S3 • Amazon Q • Playwright tests  
+Sprints: 2 weeks each, 5 total (10 weeks total project)
+
+DOCUMENT STRUCTURE
+-------------------------------------------------------------------
+# Sprint <number> – <sprint_name>
+
+**Duration:** Weeks <sprint_weeks>  
+**Goal:** <sprint_focus>  
+**Status:** Planned  
+**Sprint Length:** 2 weeks
+
+## 1. Sprint Goal
+Describe what success looks like at the end of the sprint (technical + functional).
+
+## 2. Epics
+List all Epics covered during this sprint.
+
+Example:
+| Epic ID | Epic Name | Description |
+|----------|------------|-------------|
+| E1 | CI/CD Setup | Create repo, Jenkins pipeline, and SAM templates |
+| E2 | Serverless Environment | Initialize AWS Lambda + API Gateway + Aurora |
+
+## 3. User Stories
+Each Epic is broken down into Stories with acceptance criteria.
+
+Example:
+| Story ID | Description | Acceptance Criteria | Story Points |
+|-----------|--------------|--------------------|---------------|
+| US1.1 | As DevOps, I want to configure SAM templates for all backend Lambdas. | SAM validated and deployed in Test env. | 5 |
+| US1.2 | As Frontend, I want to deploy React shell to S3 + CloudFront. | Accessible via HTTPS; pipeline automated. | 3 |
+
+## 4. Tasks (JIRA Subtasks)
+| Task ID | Description | Owner | Component | Est (hrs) |
+|----------|--------------|--------|------------|-----------|
+| T1.1 | Create GitHub repos (frontend, backend, infra) | DevOps | Infra | 4 |
+| T1.2 | Configure Jenkinsfile for CI/CD | DevOps | CI/CD | 6 |
+| T1.3 | Write base SAM template.yaml | Backend | Infra | 6 |
+| T1.4 | Deploy sample Lambda “Hello world” | Backend | Lambda | 4 |
+| T1.5 | Configure Cognito User Pool | DevOps | Auth | 4 |
+
+## 5. Deliverables
+- Deployed working prototype or validated service
+- Updated documentation in `/specs`
+- Code merged into main
+- Successful pipeline execution
+
+## 6. Sprint Ceremonies
+| Ceremony | Time | Description |
+|-----------|------|-------------|
+| Sprint Planning | Day 1 | Define Sprint Backlog |
+| Daily Standup | Daily | Sync blockers/progress |
+| Review | Day 10 | Demo progress to PO |
+| Retrospective | Day 10 | Identify improvements |
+
+## 7. References
+- `/specs/technical-spec-igad-innovations-hub-v1.0.md`
+- `/specs/testing-spec-playwright-igad-v1.0.md`
+- `/specs/cost-spec-igad-innovations-hub-v1.0.md`
+
+OUTPUT
+Return ONLY the Markdown content saved to the file:
+planning/sprint-<number>-<short-focus>.md
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+Master overview file
+
+ROLE
+You are a Project Manager summarizing all Sprint-level plans for the IGAD Innovations Hub project.
+
+OBJECTIVE
+Generate a high-level overview document listing all sprints, timelines, dependencies, and overall roadmap.
+
+OUTPUT LOCATION
+planning/development-plan-overview.md
+
+STRUCTURE
+-------------------------------------------------------------------
+# IGAD Innovations Hub — Sprint Overview
+
+## 1. Project Summary
+- Duration: 10 weeks (5 sprints × 2 weeks)
+- Methodology: Scrum
+- Goal: Deliver a functional, cost-efficient serverless web platform using AWS SAM.
+
+## 2. Sprint Timeline
+| Sprint | Duration | Focus | Key Deliverables |
+|--------|-----------|--------|------------------|
+| Sprint 1 | Weeks 1–2 | Architecture setup & CI/CD | SAM templates, pipeline, Cognito |
+| Sprint 2 | Weeks 3–4 | Core backend APIs & frontend shell | NestJS APIs, React layout |
+| Sprint 3 | Weeks 5–6 | Proposal & Newsletter modules | Amazon Q integration |
+| Sprint 4 | Weeks 7–8 | Prompt Manager & Web Scraper | CRUD, SQS scraper |
+| Sprint 5 | Weeks 9–10 | QA, Cost, Handover | Tests, budgets, final docs |
+
+## 3. Dependencies
+- Sprint 2 depends on Sprint 1 infrastructure.
+- Sprint 3 depends on Sprint 2 APIs.
+- Sprint 4 depends on Sprint 3 LLM integration.
+- Sprint 5 depends on Sprint 4 data modules.
+
+## 4. Governance
+| Role | Name / Team | Responsibilities |
+|------|--------------|------------------|
+| Product Owner | — | Define priorities, accept increments |
+| Tech Lead | — | Ensure code & architecture quality |
+| DevOps | — | Maintain pipelines & infra |
+| QA | — | Test & validate functionality |
+
+## 5. Deliverables per Phase
+- `/specs` → Technical, Testing, Cost documentation  
+- `/planning` → Sprint-level plans and overview  
+- AWS resources provisioned via SAM  
+
+OUTPUT
+Return ONLY the Markdown content saved to:
+planning/development-plan-overview.md

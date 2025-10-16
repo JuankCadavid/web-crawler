@@ -1,0 +1,147 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+@import './tokens.css';
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-family-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-normal);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* Focus styles */
+*:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Selection styles */
+::selection {
+  background-color: var(--color-bg-green-light);
+  color: var(--color-text-primary);
+}
+
+/* Utility classes */
+.font-sans {
+  font-family: var(--font-family-sans);
+}
+
+.transition-all {
+  transition: all 200ms ease-in-out;
+}
+
+/* Animation for loading states */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Typography overrides for Figma matching */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--font-weight-normal);
+}
+
+/* Button styles */
+button {
+  font-weight: var(--font-weight-normal);
+}
+
+/* Custom prose styles for generated content */
+.prose {
+  max-width: none;
+}
+
+.prose pre {
+  background-color: var(--color-bg-gray-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-normal);
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose h1 {
+  font-size: 1.875rem;
+  line-height: 1.25;
+}
+
+.prose h2 {
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+.prose h3 {
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+
+.prose p {
+  margin-bottom: 1rem;
+  color: var(--color-text-primary);
+}
+
+.prose ul, .prose ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.prose li {
+  margin-bottom: 0.25rem;
+  color: var(--color-text-primary);
+}
+
+.prose strong {
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-primary);
+}
+
+.prose em {
+  font-style: italic;
+  color: var(--color-text-secondary);
+}

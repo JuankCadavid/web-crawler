@@ -1,0 +1,371 @@
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+PROMPT 1
+
+ROLE
+You are an AWS Solutions Architect specialized in creating technical documentation that follows AWS style and structure.
+
+OBJECTIVE
+Create a complete technical specification document for the “IGAD Innovations Hub”.
+
+SCOPE (modules)
+- Main Page
+- Proposal Writer (LLM-assisted)
+- Newsletter Generator (LLM + summarization)
+- Prompt Manager (CRUD + versioning + tags + A/B)
+- Web Scraper (queued, rate-limited, robots-aware)
+- Amazon Q integration (enterprise search/assist)
+
+TECH STACK (fixed)
+- Frontend: React 18+, TypeScript, TailwindCSS, S3 + CloudFront
+- Backend: NestJS 10+ on AWS Lambda (Node.js 20)
+- API: Amazon API Gateway (prefer HTTP APIs for cost)
+- AuthN/Z: Amazon Cognito (JWT authorizer on API GW)
+- Data: Aurora Serverless v2 (PostgreSQL) for relational; S3 for documents/blobs
+- Search: Amazon OpenSearch (prefer Serverless collection) OR pgvector in Aurora if lower cost is needed
+- Queues/Events: SQS + SNS; optional EventBridge rules
+- Observability: CloudWatch Logs (14-day retention), CloudWatch Metrics/Alarms, X-Ray
+- IaC/Deploy: AWS SAM
+- CI/CD: Jenkins or CodePipeline/CodeBuild
+
+DELIVERABLE
+Produce a single Markdown file named `/specs/technical-spec-igad-innovations-hub-v1.1.md` with these sections:
+1. Overview & Goals
+   - Problem statement, business value, success metrics
+2. User Journeys & Functional Requirements per module
+3. Non-Functional Requirements (quantified)
+   - Latency (p95 ≤ 800ms API, ≤ 2.5s LLM), Availability (≥ 99.9%), RPO ≤ 15 min, RTO ≤ 60 min
+4. Architecture Summary (text)
+   - Serverless-first design, data flow, failure modes, scaling approach
+5. Detailed Component Design
+   - Frontend app (routes, state, auth flow)
+   - Backend services (NestJS modules per domain; DTOs; error contracts)
+   - LLM orchestration patterns (guardrails, prompt templates, retrieval, output validation)
+   - Amazon Q integration approach (connectors, index scope, permissions boundary)
+   - Web Scraper controls (robots.txt, allowlists, rate limit, anti-abuse)
+6. Interfaces & Contracts
+   - REST endpoints (paths, verbs, req/resp schemas), error model, idempotency keys
+7. Data Model (high-level)
+   - Entities (Users, Projects, Prompts, Drafts, ScrapeJobs, ScrapeResults, Publications), retention & lifecycle
+8. Security & Compliance
+   - IAM roles/least-privilege matrix, KMS encryption (S3/Aurora/OpenSearch), PII handling, audit logs, WAF on CloudFront
+   - Threat model summary (prompt injection, scraping abuse, data exfiltration) + mitigations
+9. Deployment & Environments
+   - Test & Prod (separate AWS accounts), SAM packaging, parameterization, rollbacks
+10. Observability & SRE Runbooks
+    - Dashboards, alarms, incident response, rollback checklist
+11. Cost-Aware Architecture (must be explicit)
+    - HTTP API over REST API (lower cost)
+    - Right-size Lambda memory; avoid Provisioned Concurrency unless needed for p95 SLO
+    - Set reserved concurrency caps to control spend
+    - CloudWatch Logs retention = 14 days; selective structured logging
+    - CloudFront caching & long TTL for immutable assets; compression on
+    - Prefer OpenSearch Serverless only if search is required; else consider pgvector in Aurora for lower steady-state cost
+    - S3 lifecycle rules to IA/Glacier for generated artifacts >30/60 days
+    - Aurora Serverless min capacity; pause in Test env during off-hours
+12. Risks, Assumptions, Decisions
+13. Open Questions with owners & due dates
+14. Appendices
+    - OpenAPI excerpt
+    - IAM policy examples
+    - SLO/SLI table
+
+STYLE
+- Follow AWS doc tone: concise, factual, implementation-ready.
+- Use Markdown headings, tables for NFRs/services, and bullet lists.
+
+OUTPUT
+Return ONLY the Markdown content for the file, nothing else.
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+PROMPT 2
+
+ROLE
+You are an AWS Cloud Architect specialized in architecture visualization using the AWS Diagram MCP. You generate final PNG images using official AWS iconography and C4 modeling conventions.
+
+OBJECTIVE
+Create cost-aware architecture diagrams for the IGAD Innovations Hub and OUTPUT THEM AS PNG IMAGES located under the repository path:
+- specs/diagrams/c4-context.png
+- specs/diagrams/c4-container.png
+- specs/diagrams/network-topology.png
+
+SCOPE (authoritative inputs)
+- Frontend: React (TypeScript) hosted on S3 + CloudFront
+- Backend: NestJS on AWS Lambda (Node.js 20)
+- API: Amazon API Gateway (HTTP API for lower cost)
+- Auth: Amazon Cognito (JWT authorizer on API GW)
+- Data: Aurora Serverless v2 (PostgreSQL), S3 for artifacts
+- Search: Prefer pgvector-in-Aurora; OpenSearch Serverless only if needed
+- Async: SQS/SNS; optional EventBridge
+- AI: Amazon Q (and optional Bedrock models)
+- Observability: CloudWatch Logs (14-day retention), CloudWatch Metrics/Alarms, X-Ray
+- Environments: TEST and PROD (separate AWS accounts)
+- IaC/Deploy: AWS SAM
+- Key cost notes to annotate: HTTP API (cheaper), CloudFront caching, no provisioned concurrency, reserved concurrency caps, Aurora min ACU and pause in TEST, S3 lifecycle to IA/Glacier, logs retention 14d.
+
+DELIVERABLES (PNG IMAGES ONLY — REQUIRED)
+1) specs/diagrams/c4-context.png
+   - C4 Level 1 (Context): End users, IGAD Innovations Hub (as a system), external services (Amazon Q/Bedrock), identity provider (Cognito), data sources for scraping, email/notifications if used.
+   - Show trust boundaries: Browser/CloudFront edge, AWS account boundary.
+
+2) specs/diagrams/c4-container.png
+   - C4 Level 2 (Container): 
+     * CloudFront + S3 (frontend)
+     * API Gateway (HTTP API)
+     * Lambda (NestJS containers/modules: proposals, newsletters, prompts, scraper)
+     * Aurora Serverless v2 (PostgreSQL)
+     * S3 (artifacts/drafts)
+     * Optional OpenSearch Serverless (OR a callout for pgvector in Aurora)
+     * Cognito
+     * SQS/SNS, optional EventBridge
+     * Amazon Q / Bedrock
+   - Label key flows: “HTTPS + JWT”, “RDS connection”, “KMS at rest”, async/event flows.
+   - Add small note boxes for cost decisions (HTTP API cheaper, no provisioned concurrency).
+
+3) specs/diagrams/network-topology.png
+   - AWS network layout:
+     * CloudFront (edge) → S3 static hosting
+     * API Gateway (public) → Lambda in private subnets if VPC-needed; otherwise note “no VPC ENI” (cost-friendly default)
+     * Aurora Serverless v2 in private subnets (Multi-AZ)
+     * Optional OpenSearch Serverless (private)
+     * NAT/IGW as applicable, Security Groups, KMS keys
+     * Separate TEST and PROD (clearly indicated), or callouts showing account separation
+   - Add cost annotations: CloudWatch Logs 14d, CloudFront caching, Aurora min ACU in TEST, lifecycle rules on S3.
+
+DIAGRAM CONVENTIONS
+- Use official AWS icons for: Compute, Storage, Database, Networking, Security, AI/ML, Frontend edge.
+- Differentiate sync (solid lines) vs async (dashed lines).
+- Include a legend: icons, line types, and a “Cost Notes” key.
+- Keep labels readable; avoid clutter; group by environment or boundary boxes.
+- Accessibility: ensure adequate contrast and font size.
+
+OUTPUT FORMAT (MANDATORY)
+- Render and return final images as PNGs saved to:
+  * specs/diagrams/c4-context.png
+  * specs/diagrams/c4-container.png
+  * specs/diagrams/network-topology.png
+- If the MCP also supports source export, additionally save sources (not required) under:
+  * specs/diagrams/src/c4-context.(puml|drawio)
+  * specs/diagrams/src/c4-container.(puml|drawio)
+  * specs/diagrams/src/network-topology.(drawio|svg)
+  But the PRIMARY deliverables are the PNG files above.
+
+QUALITY BAR
+- High-resolution PNG suitable for PowerPoint.
+- Clear, consistent layout; no overlapping edges; meaningful spacing.
+- All major services labeled; cost-optimization notes present.
+
+RETURN
+Return ONLY the confirmation that the three PNG files were created at the specified paths, and (if generated) the relative paths of the optional source files.
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+PROMPT 3
+
+ROLE
+You are an AWS Cloud Economist and Cost Optimization Specialist using the AWS Cost MCP.
+
+OBJECTIVE
+Create a cost specification document for the IGAD Innovations Hub project, summarizing annual and monthly cost estimates, assumptions, and cost-optimization strategies.
+
+SCOPE
+Infrastructure is 100% serverless and must remain under 1,000 USD per year total cost.
+
+STACK SUMMARY
+- Frontend: React + TypeScript hosted on S3 + CloudFront
+- Backend: NestJS on AWS Lambda
+- API Gateway (HTTP API)
+- Cognito (authentication)
+- Aurora Serverless v2 (PostgreSQL)
+- S3 (documents, static assets)
+- CloudWatch (logs, metrics)
+- Optional: OpenSearch Serverless or pgvector in Aurora
+- SNS/SQS (async)
+- Amazon Q / Bedrock (AI generation)
+- IaC: AWS SAM
+- CI/CD: Jenkins or CodePipeline
+
+DELIVERABLE
+Create a Markdown document `/specs/cost/cost-spec-igad-innovations-hub-v1.0.md` with the following structure:
+
+1. Overview
+   - Purpose of the document
+   - Cost objective: ≤ $1,000 per year
+
+2. Cost Model and Assumptions
+   - User volume assumptions (active users/month, LLM calls/month, data size)
+   - Request volume estimates per module
+   - AWS pricing region (us-east-1)
+   - Testing environment active hours/week
+
+3. Monthly & Annual Cost Table (by service)
+   - CloudFront + S3
+   - API Gateway (HTTP API)
+   - Lambda
+   - Aurora Serverless
+   - Cognito
+   - OpenSearch / pgvector
+   - S3 storage (drafts, backups)
+   - CloudWatch
+   - Amazon Q / Bedrock usage
+   - SNS/SQS
+   - Data transfer
+
+4. Cost Optimization Strategies
+   - Use HTTP API instead of REST API
+   - Set Aurora min ACU = 0.5; pause test DB after hours
+   - Logs retention = 14 days
+   - CloudFront cache TTLs long; gzip enabled
+   - S3 lifecycle: IA after 30d, Glacier after 90d
+   - Reserved concurrency limits on Lambdas
+   - Use pgvector-in-Aurora when possible
+   - Schedule stop/start for test env with EventBridge
+   - Enable AWS Budgets and CloudWatch Alarms on spend
+
+5. Forecast Summary
+   - Monthly total (low, average, high load)
+   - Annual total (projection with margin)
+   - Comparison vs. $1,000 target
+
+6. Cost Governance
+   - Tags (`CostCenter=IGAD`, `Environment=Test|Prod`)
+   - Alerts: budget at 80% / 100% thresholds
+   - Quarterly review checklist
+
+7. Appendix
+   - AWS Pricing URLs used
+   - Sample AWS Budgets configuration JSON
+
+STYLE
+- Follow AWS documentation tone.
+- Use Markdown tables for costs.
+- Include formulas where applicable (e.g., Requests × Price per request).
+- End with an “Under-Budget Confirmation” section confirming total ≤ $1,000/year.
+
+OUTPUT
+Return ONLY the Markdown content for `/specs/cost/cost-spec-igad-innovations-hub-v1.0.md`.
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+PROMPT 4
+
+ROLE
+You are a DevOps Architect for AWS Serverless apps using SAM. You scaffold a monorepo with GitHub Actions CI/CD via AWS OIDC (no Jenkins). Using AWS CDK MCP and AWS CDK Serverless
+
+OBJECTIVE
+Create a production-ready monorepo named `igad/` with:
+- `igad/frontend`  (React + TypeScript + TailwindCSS, matches Figma UI)
+- `igad/backend`   (NestJS on AWS Lambda)
+- `igad/infrastructure` (AWS SAM IaC)
+- CI/CD: GitHub Actions using AWS OIDC to deploy SAM + upload frontend to S3 + invalidate CloudFront.
+
+FIGMA (design fidelity for frontend)
+https://www.figma.com/design/mUmeInkEfKNUMpWKYcOv11/Mockups---IGAD-Innovations-Hub?node-id=1-2&t=aohqlnsZW9VnDdas-0
+
+REPO LAYOUT
+igad/
+  README.md
+  .gitignore
+  .editorconfig
+  .env.example
+  frontend/
+    package.json
+    tsconfig.json
+    vite.config.ts
+    tailwind.config.ts
+    postcss.config.cjs
+    src/
+      main.tsx
+      app.tsx
+      routes/
+        index.tsx
+        proposals.tsx
+        newsletters.tsx
+        prompts.tsx
+        scraper.tsx
+      components/
+        Layout/{Header.tsx,Sidebar.tsx,Container.tsx}
+        UI/{Button.tsx,Card.tsx,Input.tsx,Select.tsx,Badge.tsx}
+      styles/{globals.css,tokens.css}
+      lib/{api.ts,auth.ts}
+    __tests__/smoke.spec.ts
+  backend/
+    package.json
+    tsconfig.json
+    src/
+      main.ts
+      app.module.ts
+      modules/
+        core/{core.module.ts,health.controller.ts}
+        auth/{auth.module.ts,jwt.guard.ts}
+        proposals/{proposals.module.ts,proposals.controller.ts,proposals.service.ts}
+        newsletters/{newsletters.module.ts,newsletters.controller.ts,newsletters.service.ts}
+        prompts/{prompts.module.ts,prompts.controller.ts,prompts.service.ts}
+        scraper/{scraper.module.ts,scraper.controller.ts,scraper.service.ts}
+      services/amazonq.service.ts
+      common/{errors.filter.ts,validation.pipe.ts}
+      dto/index.ts
+    test/{proposals.spec.ts,newsletters.spec.ts}
+  infrastructure/
+    template.yaml
+    params/{test.json,prod.json}
+    scripts/{build.sh,deploy.sh,samconfig.toml}
+    docs/ops-notes.md
+  .github/
+    workflows/
+      deploy-test.yml
+      deploy-prod.yml
+
+CI/CD (GitHub Actions with AWS OIDC)
+- Use `aws-actions/configure-aws-credentials` with an AWS IAM Role for OIDC.
+- Jobs:
+  1) Frontend build (Vite) → upload to S3 (public bucket) → CloudFront invalidation
+  2) Backend build (NestJS) + tests
+  3) SAM build + SAM deploy (API/Lambdas/Cognito/etc.)
+  4) Post-deploy smoke (curl /health)
+- Trigger on push to `main` (test) and on release tag (prod).
+
+COST GUARDRAILS
+- API Gateway **HTTP API** (cheaper)
+- Lambda 256–512MB, no provisioned concurrency, reserved concurrency caps
+- CloudWatch logs retention 14d
+- S3 lifecycle: IA (30d) → Glacier (90d) for drafts/scrape-results
+- Aurora Serverless v2 min ACU; Test paused off-hours
+- Prefer pgvector-in-Aurora over OpenSearch unless justified
+
+FILES TO RETURN (with content)
+- igad/README.md (local dev + CI/CD steps + OIDC role setup notes)
+- igad/frontend/src/styles/tokens.css (design tokens placeholders)
+- igad/frontend/src/components/UI/Button.tsx (sample atom)
+- igad/frontend/src/routes/index.tsx (layout matching Figma sections)
+- igad/backend/src/main.ts and app.module.ts (Lambda bootstrap + pipes/filters)
+- controllers stubs for all modules under backend/src/modules/*
+- igad/infrastructure/template.yaml (FULL SAM skeleton)
+- igad/infrastructure/params/test.json and prod.json
+- igad/infrastructure/scripts/{build.sh,deploy.sh}
+- igad/.github/workflows/deploy-test.yml (full)
+- igad/.github/workflows/deploy-prod.yml (full)
+- igad/.env.example
+
+GITHUB ACTIONS — deploy-test.yml (requirements)
+- Permissions: id-token: write, contents: read
+- Configure AWS creds via OIDC (role ARN input)
+- Node 20 setup, cache npm
+- Build frontend → sync to S3 (aws s3 sync) → cloudfront create-invalidation
+- Build backend + tests
+- `sam build --use-container` and `sam deploy` with params/test.json
+- Print Outputs (ApiBaseUrl, CloudFrontUrl)
+
+GITHUB ACTIONS — deploy-prod.yml (requirements)
+- Same as test but uses params/prod.json
+- Trigger on tag `v*.*.*` or manual workflow_dispatch
+
+OUTPUT
+Return ONLY the text files with their contents, as listed above (no binaries).
+Use clear TODO comments for values (Role ARN, ARNs, IDs, bucket names, distribution IDs).
+
+feel free to generate suggestions based on your experience
+
+
+

@@ -1,0 +1,13 @@
+{
+  "Parameters": {
+    "Environment": "prod",
+    "DomainName": "hub.igad.org",
+    "CertificateArn": "arn:aws:acm:us-east-1:ACCOUNT-ID:certificate/CERTIFICATE-ID"
+  },
+  "Tags": {
+    "Project": "IGAD-Hub",
+    "Environment": "prod",
+    "CostCenter": "Innovation",
+    "Owner": "igad-ops-team"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "Parameters": {
+    "Environment": "test",
+    "DomainName": "",
+    "CertificateArn": ""
+  },
+  "Tags": {
+    "Project": "IGAD-Hub",
+    "Environment": "test",
+    "CostCenter": "Innovation",
+    "Owner": "igad-dev-team"
+  }
+}
