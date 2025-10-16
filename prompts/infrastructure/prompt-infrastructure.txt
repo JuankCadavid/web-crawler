@@ -1,0 +1,164 @@
+ROLE
+You are the AWS Serverless MCP Server. Convert the IGAD project to a **SAM-only** infrastructure & deployment model that uses the **SAM CLI** exclusively (no CDK, no Jenkins, no GitHub Actions). Generate the artifacts below and ensure all resources are properly tagged.
+
+OBJECTIVE
+1) Use **AWS SAM** as the single source of truth for IaC.
+2) Provide a production-ready **template.yaml** with cost-aware, least-privilege resources.
+3) Provide a multi-environment **samconfig.toml** (test, prod) configured for `sam build` + `sam deploy`.
+4) Provide simple bash helpers (`build.sh`, `deploy.sh`) that wrap SAM CLI commands.
+5) Tag **every** AWS resource consistently.
+6) Re-check earlier component choices; keep only what’s justified for cost/simplicity. Flag optional parts behind parameters.
+
+PROJECT CONTEXT
+- Frontend: React + TypeScript + Tailwind, hosted on **S3 + CloudFront**
+- Backend: **NestJS** on **AWS Lambda** (Node.js 20)
+- API: **API Gateway HTTP API** (cheaper than REST)
+- Auth: **Amazon Cognito** (JWT authorizer)
+- Data: prefer **Aurora Serverless v2 (PostgreSQL + pgvector)** ONLY if we truly need relational + vector; otherwise allow **DynamoDB** as a lower-cost toggle for simple CRUD.
+- Search: avoid OpenSearch unless strongly justified; default OFF via parameter.
+- Async: **SQS** for the scraper queue (+ DLQ)
+- Observability: **CloudWatch Logs** (14-day retention), basic alarms (optional)
+- Budget target: ≤ **USD 1,000/year** (light internal usage)
+
+DELIVERABLES (CREATE/UPDATE THESE FILES)
+- `igad/infrastructure/template.yaml`     # full SAM template (see spec below)
+- `igad/infrastructure/samconfig.toml`    # multi-env (test, prod)
+- `igad/infrastructure/params/test.json`  # parameter overrides
+- `igad/infrastructure/params/prod.json`
+- `igad/infrastructure/scripts/build.sh`  # runs sam build + basic checks
+- `igad/infrastructure/scripts/deploy.sh` # runs sam deploy with selected env
+- `igad/infrastructure/docs/ops-notes.md` # short runbook: deploy, rollback, tags
+
+TAGGING (MANDATORY)
+Apply consistent tags to **all** resources (SAM Globals + per-resource where needed):
+
+Project = IGAD-Innovations-Hub
+Environment = ${Stage} # test | prod
+Owner = IBD-Delivery
+CostCenter = IGAD
+ManagedBy = SAM
+
+
+TEMPLATE REQUIREMENTS (template.yaml)
+Transform & Globals:
+- `Transform: AWS::Serverless-2016-10-31`
+- `Globals`:
+  - `Function`: Runtime `nodejs20.x`, MemorySize `256-512`, Timeout `30`, Tracing `Active`, `Tags` (from above), `Environment` (LOG_LEVEL, STAGE, etc.)
+  - `Api`: `Tags` with same keys
+  - Set default `Logs` retention for all functions to `14` days (use `AWS::Logs::LogGroup` per function, or SAM `Logging` if available)
+
+Parameters (with sensible defaults and toggles):
+- `Stage` (AllowedValues: test, prod)
+- `UseAurora` (true/false, default **false**)
+- `UseOpenSearch` (true/false, default **false**)
+- `FrontendBucketName`, `PrivateBucketName`
+- `CognitoUserPoolId`, `CognitoUserPoolClientId`
+- If `UseAurora=true` → `AuroraClusterArn`, `AuroraSecretArn`, `AuroraDbName`, plus **VPC** parameters (VpcId, PrivateSubnets[], SecurityGroupIds[]) because Aurora requires VPC networking.
+- If `UseAurora=false` → `DynamoTableMode` (PAY_PER_REQUEST), table names.
+
+Core resources (SAM + CFN mix, but **all in this template**):
+1) **HttpApi** (AWS::Serverless::HttpApi)
+   - CORS open to your web origin(s)
+   - Output: `ApiEndpoint`
+2) **Lambdas** (AWS::Serverless::Function)
+   - `coreFn` (GET `/health`)
+   - `proposalsFn` (POST `/v1/proposals:generate`)
+   - `newslettersFn` (POST `/v1/newsletters:generate`)
+   - `promptsFn` (GET/POST `/v1/prompts`)
+   - `scraperFn` (POST `/v1/scrape-jobs`, GET `/v1/scrape-jobs/{id}`)
+   - Events: connect to the **HttpApi** routes
+   - Reserved Concurrency caps for cost control (small numbers)
+   - IAM policies = **least privilege** (restrict S3 prefixes; read-only Secrets ARNs if Aurora; SQS permissions for scraper)
+3) **SQS** (jobs + DLQ) for the scraper; Lambda event source mapping for async processing (if scraper needs a worker function)
+4) **Cognito** (either fully managed here OR referenced via Parameters)
+   - If *managing here*: create UserPool + AppClient resources
+5) **S3** buckets
+   - Public (frontend hosting) with OAI/OAC policy for CloudFront
+   - Private (artifacts, `drafts/`, `scrape-results/`)
+   - **Lifecycle:** IA at 30 days, Glacier at 90 days
+   - **Tags** applied
+6) **CloudFront Distribution**
+   - Origin: Public bucket; Compression on; long TTL for immutable assets
+   - Output: `CloudFrontUrl`
+7) **Data layer (toggle)**
+   - If `UseAurora=true`:
+     - **Aurora v2** cluster can be parameterized (created externally) → Refer by Arn/Secret Arn/DB Name
+     - Provide **optionally** an `RDS Proxy` resource if connection scaling warrants it (default OFF to save cost)
+     - Ensure Lambdas in **VPC** subnets + SGs when hitting Aurora (note cold start tradeoff in comments)
+   - Else (default): **DynamoDB** table(s) for prompts, scrape jobs, drafts metadata (PAY_PER_REQUEST)
+8) **(Optional) OpenSearch** (feature flag `UseOpenSearch=true`): create minimal Serverless collection NOTE: default OFF; prefer pgvector-in-Aurora or simple Dynamo queries for cost
+
+Security & Observability:
+- IAM policies: scoped, no wildcards except where unavoidable for logs
+- KMS at rest for S3 (SSE-S3 OK; KMS optional), Secrets Manager for Aurora credentials
+- CloudWatch metric alarms (optional, basic): Lambda Errors > 0, DLQ depth > threshold
+
+Outputs:
+- `ApiEndpoint`, `CloudFrontUrl`, `PublicBucketName`, `PrivateBucketName`
+- If Cognito is created here: `CognitoUserPoolId`, `CognitoUserPoolClientId`
+- If Aurora used: `AuroraClusterArn`, `AuroraSecretArn`, `AuroraDbName`
+
+SAMCONFIG.TOML (igad/infrastructure/samconfig.toml)
+Create **two named environments** (`test`, `prod`) with:
+- default `region` (e.g., `us-east-1`)
+- `stack_name` (igad-${Stage})
+- `capabilities` `CAPABILITY_IAM`
+- `parameter_overrides` referencing `params/{env}.json` OR inline overrides
+- `confirm_changeset = false` for CI-like usage; true is fine for local
+Example structure:
+
+version = 0.1
+
+[default.global.parameters]
+region = "us-east-1"
+
+[default.build.parameters]
+use_container = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+
+[test.deploy.parameters]
+stack_name = "igad-test"
+parameter_overrides = "Stage=test UseAurora=false UseOpenSearch=false"
+
+[prod.deploy.parameters]
+stack_name = "igad-prod"
+parameter_overrides = "Stage=prod UseAurora=false UseOpenSearch=false"
+
+(Adjust to load from `params/*.json` if preferred.)
+
+PARAM FILES (params/test.json, params/prod.json)
+Include keys mapping to template Parameters:
+- `Stage`, `FrontendBucketName`, `PrivateBucketName`
+- `CognitoUserPoolId`, `CognitoUserPoolClientId` (if referencing external)
+- Data toggles: `UseAurora`, and if true, include `AuroraClusterArn`, `AuroraSecretArn`, `AuroraDbName`, `VpcId`, `PrivateSubnets`, `SecurityGroupIds`
+
+SCRIPTS
+- `build.sh`:
+  - `set -euo pipefail`
+  - `sam validate`
+  - `sam build --use-container`
+- `deploy.sh`:
+  - Usage: `./deploy.sh test` or `./deploy.sh prod`
+  - Loads env name, optional param file
+  - `sam deploy --config-file samconfig.toml --config-env ${ENV}`
+  - Prints Outputs (`aws cloudformation describe-stacks ...`)
+
+COMPONENT RE-EVALUATION (APPLY RECOMMENDATIONS)
+- Keep **HTTP API** (cheaper & sufficient)
+- **Aurora v2** only when you need SQL + vector or relational joins; otherwise default to **DynamoDB** to lower cost/complexity/VPC cold starts
+- **OpenSearch** OFF by default; enable only for complex search/analytics unmet by pgvector or Dynamo
+- **RDS Proxy** OFF by default (adds cost); enable behind a Parameter if Lambda concurrency grows
+- Prefer **VPC-less Lambdas** unless Aurora is enabled (VPC adds cold start + config overhead)
+- Ensure CloudFront caching, long TTLs, S3 lifecycles, logs retention 14d
+
+VALIDATION
+- Ensure **all resources** have Tags (Globals + per-resource)
+- Ensure `sam validate` passes
+- Ensure template uses **least-privilege** IAM statements
+- Ensure `Outputs` include URLs/IDs needed by the app and docs
+
+RETURN
+Create/overwrite all files listed in DELIVERABLES and return their full text contents. Keep placeholders for ARNs/IDs and add TODO comments where the operator must fill in values.

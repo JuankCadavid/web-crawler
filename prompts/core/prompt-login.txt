@@ -1,0 +1,149 @@
+ROLE
+You are an AWS Serverless + Frontend MCP that edits a React + TypeScript + Tailwind app and a NestJS-on-Lambda backend, deployed via SAM only. Implement a global Navbar visible on all pages, AWS Cognito authentication with manual approval, and role-based access control (ADMIN vs USER). Keep visual style aligned with existing tokens and mockup. Do not add Jenkins/CDK/GitHub Actions.
+
+OBJECTIVE
+1) Add a global, design-aligned Navbar on every page.
+2) Implement Cognito-based Sign in / Register (username + password), with manual approval by the tech team before access is granted.
+3) Enforce RBAC with two roles:
+   - ADMIN: full access (can manage prompts and run web scraper)
+   - USER: can use Proposal Writer and Newsletter Generator, but cannot create prompts or use the web scraper
+4) Enforce RBAC both in the UI (hide/disable) and in the backend (guards).
+5) Keep deployment SAM-only; update `template.yaml` and `samconfig.toml` as needed.
+
+CONTEXT
+Repo (monorepo):
+- igad/frontend (React 18 + Vite + Tailwind)
+- igad/backend  (NestJS 10 on AWS Lambda)
+- igad/infrastructure (AWS SAM)
+
+ENV VARS (Vite, add to igad/frontend/.env.example)
+VITE_COGNITO_USER_POOL_ID=
+VITE_COGNITO_CLIENT_ID=
+VITE_API_BASE_URL=
+
+RBAC MODEL
+- Authorization via Cognito JWT (API Gateway HTTP API JWT Authorizer).
+- Role source: `cognito:groups` claim; approved users must belong to either `USER` or `ADMIN`.
+- Unapproved users: can sign up but see “Awaiting approval” screen; no access to protected routes.
+
+TASKS
+
+A) FRONTEND (React + Tailwind)
+1) Create/update auth client:
+   - Path: `igad/frontend/src/lib/auth.ts`
+   - Use `amazon-cognito-identity-js` for username/password sign in and sign up.
+   - Functions: `signIn`, `signUp`, `signOut`, `getCurrentSession()` returning { idToken, accessToken, refreshToken, username, groups[], approved:boolean }.
+   - `approved = groups includes ADMIN or USER`.
+
+2) Add `AuthProvider` and `Protected` utilities:
+   - Paths:
+     - `igad/frontend/src/lib/AuthProvider.tsx`
+     - `igad/frontend/src/lib/Protected.tsx`
+   - `Protected` accepts optional `roles={['ADMIN'|'USER']}` and:
+     - Redirects to `/login` if not authenticated
+     - Redirects to `/awaiting-approval` if !approved
+     - Redirects to `/forbidden` if role missing
+
+3) Global Navbar component:
+   - Path: `igad/frontend/src/components/Layout/Header.tsx`
+   - Style: use tokens (colors/spacing/typography), sticky top, border bottom with `--color-muted-2`
+   - Content:
+     - Left: App name/logo
+     - Center/Right: Nav links → Home, Proposal Writer, Newsletter Generator, Prompt Manager, Web Scraper
+     - Show/Hide/Disable:
+       - If signed out: show “Sign in” & “Register”
+       - If USER: enable Proposal/Newsletter, disable (dim + pointer-events-none) Prompts/Scraper
+       - If ADMIN: all links enabled
+     - User chip with role (ADMIN/USER) + Sign out button
+
+4) Pages:
+   - Add/Update routes and pages:
+     - `igad/frontend/src/routes/login.tsx`: simple form → `signIn`
+     - `igad/frontend/src/routes/register.tsx`: simple form → `signUp` then success message (“Awaiting approval”)
+     - `igad/frontend/src/routes/awaiting-approval.tsx`: message page
+     - `igad/frontend/src/routes/forbidden.tsx`: forbidden message
+   - Mount Navbar globally in app shell:
+     - `igad/frontend/src/app.tsx` includes `<Header/>` and `<Outlet/>`
+   - Router protection:
+     - `/proposals`, `/newsletters` → `Protected roles={['USER','ADMIN']}`
+     - `/prompts`, `/scraper` → `Protected roles={['ADMIN']}`
+
+5) API wrapper:
+   - Update `igad/frontend/src/lib/api.ts` to attach `Authorization: Bearer <idToken>` when present.
+
+B) BACKEND (NestJS on Lambda)
+1) Ensure API Gateway HTTP API JWT authorizer is used (see SAM section).
+2) Add a simple role guard:
+   - Path: `igad/backend/src/modules/auth/jwt.guard.ts`
+   - Read claims from APIGW event: `requestContext.authorizer.jwt.claims['cognito:groups']`
+   - Guard constructor accepts roles array; pass `['ADMIN']` for admin-only endpoints.
+3) Apply guards:
+   - Prompts controller (create/update) → ADMIN only
+   - Scraper controller (start jobs) → ADMIN only
+   - Proposals / Newsletters → USER or ADMIN
+   - Health → public
+4) Return 403 on role mismatch.
+
+C) INFRASTRUCTURE (SAM-only)
+1) Update `igad/infrastructure/template.yaml`:
+   - `Transform: AWS::Serverless-2016-10-31`
+   - `Globals`:
+     - `Function`: Runtime `nodejs20.x`, Memory `256`, Timeout `30`, Tracing `Active`, `Environment` (LOG_LEVEL, STAGE), `Tags` (Project, Environment, Owner, CostCenter, ManagedBy=SAM)
+     - `Api`: `Tags` same keys
+   - Parameters:
+     - `Stage` (test|prod)
+     - `CognitoUserPoolId`, `CognitoUserPoolClientId`
+   - `AWS::Serverless::HttpApi` with:
+     - CORS (limit to frontend origin in TODO)
+     - `Auth.DefaultAuthorizer` = Cognito JWT authorizer
+       - issuer: `https://cognito-idp.${AWS::Region}.amazonaws.com/${CognitoUserPoolId}`
+       - audience: `[CognitoUserPoolClientId]`
+   - Functions (CodeUri points to backend build output):
+     - `coreFn` GET `/health` (no authorizer or allow by default)
+     - `proposalsFn` POST `/v1/proposals:generate` (JWT)
+     - `newslettersFn` POST `/v1/newsletters:generate` (JWT)
+     - `promptsFn` GET `/v1/prompts`, POST `/v1/prompts` (JWT)
+     - `scraperFn` POST `/v1/scrape-jobs`, GET `/v1/scrape-jobs/{id}` (JWT)
+   - ReservedConcurrency small caps for cost control
+   - Outputs: `ApiEndpoint`
+
+2) Configure `igad/infrastructure/samconfig.toml`:
+   - Envs `test` and `prod`, with region, stack_name, capabilities, parameter_overrides including `Stage`, `CognitoUserPoolId`, `CognitoUserPoolClientId`.
+
+3) Tag all resources (Globals + per-resource where necessary).
+
+DELIVERABLES (RETURN FULL FILE CONTENT OR DIFFS)
+FRONTEND
+- `src/lib/auth.ts`
+- `src/lib/AuthProvider.tsx`
+- `src/lib/Protected.tsx`
+- `src/components/Layout/Header.tsx`
+- `src/app.tsx`
+- `src/lib/api.ts` (updated to send Authorization header)
+- `src/routes/{login.tsx,register.tsx,awaiting-approval.tsx,forbidden.tsx}`
+- Router changes (main router file): protect routes as specified
+- `.env.example` with `VITE_*` vars
+
+BACKEND
+- `src/modules/auth/jwt.guard.ts`
+- Controller updates showing `@UseGuards(new JwtRoleGuard(['ADMIN']))` where applicable
+
+SAM
+- `igad/infrastructure/template.yaml` (updated)
+- `igad/infrastructure/samconfig.toml` (two envs)
+
+ACCEPTANCE CRITERIA
+- Navbar visible on all pages; design aligned with tokens (colors/radii/spacing).
+- Registration works; after sign-up user sees “Awaiting approval”.
+- Only users in Cognito groups `USER` or `ADMIN` can pass Protected routes.
+- USER can access Proposal/Newsletter; cannot access Prompts/Scraper (UI dimmed/disabled and backend returns 403).
+- ADMIN has full access.
+- JWT authorizer configured on HTTP API; claims available to Lambdas.
+- SAM validates (`sam validate`) and deploys (`sam deploy`) with parameter overrides for test/prod.
+- All resources tagged with Project/Environment/Owner/CostCenter/ManagedBy.
+
+NOTES
+- Keep all values (UserPoolId, ClientId, origins) as TODO placeholders to be filled by the operator.
+- Do not introduce CDK, Jenkins, or GitHub Actions; deployment is SAM-only.
+
+Check the project and add suggestions if is necessary

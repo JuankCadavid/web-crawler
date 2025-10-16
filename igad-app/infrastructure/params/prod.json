@@ -1,13 +1,25 @@
 {
-  "Parameters": {
-    "Environment": "prod",
-    "DomainName": "hub.igad.org",
-    "CertificateArn": "arn:aws:acm:us-east-1:ACCOUNT-ID:certificate/CERTIFICATE-ID"
-  },
-  "Tags": {
-    "Project": "IGAD-Hub",
-    "Environment": "prod",
-    "CostCenter": "Innovation",
-    "Owner": "igad-ops-team"
+  "Stage": "prod",
+  "LogLevel": "INFO",
+  "UseAurora": "false",
+  "UseOpenSearch": "false",
+  "UseRDSProxy": "false",
+  "FrontendBucketName": "",
+  "PrivateBucketName": "",
+  "AuroraClusterArn": "",
+  "AuroraSecretArn": "",
+  "AuroraDbName": "igad_db",
+  "VpcId": "",
+  "PrivateSubnets": "",
+  "SecurityGroupIds": "",
+  "_comment": "To enable Aurora, set UseAurora=true and fill in the Aurora/VPC parameters below",
+  "_aurora_example": {
+    "UseAurora": "true",
+    "UseRDSProxy": "true",
+    "AuroraClusterArn": "arn:aws:rds:us-east-1:123456789012:cluster:igad-aurora-prod",
+    "AuroraSecretArn": "arn:aws:secretsmanager:us-east-1:123456789012:secret:igad-aurora-creds-abc123",
+    "VpcId": "vpc-12345678",
+    "PrivateSubnets": "subnet-12345678,subnet-87654321",
+    "SecurityGroupIds": "sg-12345678"
   }
 }

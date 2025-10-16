@@ -1,13 +1,15 @@
 {
-  "Parameters": {
-    "Environment": "test",
-    "DomainName": "",
-    "CertificateArn": ""
-  },
-  "Tags": {
-    "Project": "IGAD-Hub",
-    "Environment": "test",
-    "CostCenter": "Innovation",
-    "Owner": "igad-dev-team"
-  }
+  "Stage": "test",
+  "LogLevel": "DEBUG",
+  "UseAurora": "false",
+  "UseOpenSearch": "false",
+  "UseRDSProxy": "false",
+  "FrontendBucketName": "",
+  "PrivateBucketName": "",
+  "AuroraClusterArn": "",
+  "AuroraSecretArn": "",
+  "AuroraDbName": "igad_db",
+  "VpcId": "",
+  "PrivateSubnets": "",
+  "SecurityGroupIds": ""
 }

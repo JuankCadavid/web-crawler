@@ -1,0 +1,201 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'IGAD Innovations Hub - Infrastructure Only'
+
+Parameters:
+  Stage:
+    Type: String
+    Default: "test"
+
+Resources:
+  # DynamoDB Tables
+  PromptsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'igad-prompts-${Stage}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: IGAD-Innovations-Hub
+        - Key: Environment
+          Value: !Ref Stage
+
+  ScraperJobsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'igad-scraper-jobs-${Stage}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: status-index
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Project
+          Value: IGAD-Innovations-Hub
+        - Key: Environment
+          Value: !Ref Stage
+
+  # S3 Buckets
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'igad-frontend-${Stage}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Project
+          Value: IGAD-Innovations-Hub
+        - Key: Environment
+          Value: !Ref Stage
+
+  PrivateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'igad-private-${Stage}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Project
+          Value: IGAD-Innovations-Hub
+        - Key: Environment
+          Value: !Ref Stage
+
+  # SQS Queues
+  ScraperQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 'igad-scraper-${Stage}'
+      VisibilityTimeout: 180
+      MessageRetentionPeriod: 1209600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ScraperDLQ.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Project
+          Value: IGAD-Innovations-Hub
+        - Key: Environment
+          Value: !Ref Stage
+
+  ScraperDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 'igad-scraper-dlq-${Stage}'
+      MessageRetentionPeriod: 1209600
+      Tags:
+        - Key: Project
+          Value: IGAD-Innovations-Hub
+        - Key: Environment
+          Value: !Ref Stage
+
+  # Cognito User Pool
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub 'igad-users-${Stage}'
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+      UserPoolTags:
+        Project: IGAD-Innovations-Hub
+        Environment: !Ref Stage
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: !Sub 'igad-client-${Stage}'
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+
+Outputs:
+  FrontendBucketName:
+    Description: 'S3 bucket for frontend hosting'
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-FrontendBucket'
+
+  PrivateBucketName:
+    Description: 'S3 bucket for private assets'
+    Value: !Ref PrivateBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateBucket'
+
+  PromptsTableName:
+    Description: 'DynamoDB table for prompts'
+    Value: !Ref PromptsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-PromptsTable'
+
+  ScraperJobsTableName:
+    Description: 'DynamoDB table for scraper jobs'
+    Value: !Ref ScraperJobsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ScraperJobsTable'
+
+  ScraperQueueUrl:
+    Description: 'SQS Queue URL for scraper jobs'
+    Value: !Ref ScraperQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-ScraperQueueUrl'
+
+  CognitoUserPoolId:
+    Description: 'Cognito User Pool ID'
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolId'
+
+  CognitoUserPoolClientId:
+    Description: 'Cognito User Pool Client ID'
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolClientId'

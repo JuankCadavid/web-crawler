@@ -66,4 +66,7 @@ async function bootstrap() {
   console.log(`🔍 Health check at http://localhost:${port}/health`);
 }
 
-bootstrap();
+// Only run bootstrap if not in Lambda environment
+if (require.main === module) {
+  bootstrap();
+}

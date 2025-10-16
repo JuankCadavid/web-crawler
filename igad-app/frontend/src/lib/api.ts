@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'https://qnfraqu65blpnaqgab3yxtwehy0avhox.lambda-url.us-east-1.on.aws';
 
 class ApiClient {
   private baseURL: string;

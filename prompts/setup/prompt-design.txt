@@ -1,0 +1,346 @@
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+ROLE
+You are an expert frontend developer and UI/UX engineer specialized in pixel-perfect conversions from Figma to React + TypeScript + TailwindCSS. Your task is to create a production-ready frontend that exactly replicates the design of the IGAD Innovations Hub mockup.
+
+FIGMA SOURCE
+https://www.figma.com/design/mUmeInkEfKNUMpWKYcOv11/Mockups---IGAD-Innovations-Hub?node-id=1-2&t=txIg1luiKUQEjI71-0
+
+PROJECT CONTEXT
+The IGAD Innovations Hub is a web application built to manage innovation proposals, newsletters, prompts, and scraping jobs. The application integrates with backend AWS Lambda functions and Amazon Q for AI-assisted content generation. The frontend must be visually identical to the Figma mockup and implemented using:
+- React 18+
+- TypeScript
+- TailwindCSS
+- Vite (build tool)
+- React Router for navigation
+- Component-driven architecture (Layout + UI atoms)
+
+PRIMARY GOAL
+Reproduce the mockup’s interface with fidelity: every color, spacing, typography, and icon placement should match the Figma design precisely. Prioritize design accuracy and responsiveness.
+
+---
+
+## DESIGN SYSTEM (from the Figma mockup)
+
+### 1. Color Palette
+- **Primary color:** deep blue #002F5D  
+- **Secondary / accent:** turquoise #00A9A5  
+- **Background / surface:** light neutral #F9FAFB and white #FFFFFF  
+- **Text primary:** #111827  
+- **Text secondary:** #4B5563  
+- **Borders / lines:** #E5E7EB  
+- **Highlight / hover:** #E0F2FE  
+- All colors must be defined as CSS variables in `tokens.css` and referenced via Tailwind theme extensions.
+
+### 2. Typography
+- **Font family:** "Inter", sans-serif  
+- **Weights:** 400 (Regular), 500 (Medium), 600 (SemiBold)  
+- **Headings:** sizes `text-2xl`, `text-xl` with tight leading  
+- **Body:** `text-sm` to `text-base`, line height 1.5–1.6  
+- Use Tailwind’s font utilities; no inline styles.
+
+### 3. Layout and Spacing
+- Global spacing grid: multiples of 8 px  
+- Rounded corners: 12 px for cards, 8 px for buttons  
+- Shadows: subtle elevation (`shadow-md` on cards, `shadow-sm` on inputs)  
+- Max page width = 1440 px; content constrained inside 1200 px center column.
+
+---
+
+## PAGE STRUCTURE
+
+### Header (Top Navigation)
+- Persistent across all pages.
+- Left: application logo “IGAD Innovations Hub” with colored accent.
+- Center: breadcrumb or page title.
+- Right: user avatar + dropdown menu (Settings, Logout).
+- Sticky header with subtle bottom shadow and white background.
+
+### Sidebar (Left Navigation)
+- Vertical menu with icons and text labels.
+- Active state highlighted in primary color with left accent bar.
+- Sections:
+  1. **Dashboard / Home**
+  2. **Proposal Writer**
+  3. **Newsletter Generator**
+  4. **Prompt Manager**
+  5. **Web Scraper**
+- Collapsible on small screens (hamburger toggle).
+
+### Main Content Area
+- Displays cards or panels per section.
+- Consistent card design: white background, 12 px radius, 16–24 px padding.
+- Card header: icon + title; body: text or form elements.
+- Responsive layout using CSS grid (2–3 columns on desktop, 1 on mobile).
+
+---
+
+## INDIVIDUAL SECTION DETAILS
+
+### 1. **Home / Dashboard**
+- Overview cards summarizing system status:
+  - “Recent Proposals”, “Newsletter Drafts”, “Prompts in Use”, “Scraping Jobs”.
+- Each card shows an icon, metric number, and short description.
+
+### 2. **Proposal Writer**
+- Title area + subtitle.
+- Text input area (multi-line textarea) labeled “Proposal Topic”.
+- Button: “Generate Proposal Draft”.
+- Response area below with generated proposal text styled as a rich text card.
+
+### 3. **Newsletter Generator**
+- Input: “Paste Sources or Upload Text”.
+- Button: “Summarize with Amazon Q”.
+- Result displayed in formatted list with sub-headings for each section.
+
+### 4. **Prompt Manager**
+- Table or list of prompts with columns:
+  - Name | Description | Last Updated | Actions (Edit/Delete)
+- Add New Prompt button opens modal with two fields: Name, Content.
+
+### 5. **Web Scraper**
+- Form with fields: URL Input, Select Frequency, and “Start Scraping” button.
+- Below: job list table (URL, Status, Last Run, Actions).
+
+---
+
+## RESPONSIVE BEHAVIOR
+- **Desktop:** fixed sidebar, grid cards.
+- **Tablet:** collapsible sidebar, cards stack two per row.
+- **Mobile:** hamburger menu, single column, full-width cards.
+- Header always visible (sticky top).
+
+---
+
+## COMPONENT GUIDELINES
+Create reusable components:
+- **Layout/**
+  - `Header.tsx`  
+  - `Sidebar.tsx`  
+  - `Container.tsx`
+- **UI/**
+  - `Button.tsx`, `Card.tsx`, `Input.tsx`, `Select.tsx`, `Badge.tsx`
+- **Forms/** (optional) shared input wrappers.
+- Each component imports variables from `styles/tokens.css` and uses Tailwind classes for spacing/typography.
+
+---
+
+## FUNCTIONAL BEHAVIOR (MOCK INTEGRATION)
+- API calls use `lib/api.ts` (`fetch` wrapper) with placeholder URLs and JWT token header.
+- Auth flow stubbed to Cognito (simulate logged-in user).
+- “Generate” buttons trigger mock async loaders (spinner + success state).
+- Handle errors gracefully (toast/snackbar).
+
+---
+
+## FILE STRUCTURE EXPECTED
+src/
+routes/
+index.tsx
+proposals.tsx
+newsletters.tsx
+prompts.tsx
+scraper.tsx
+components/
+Layout/{Header.tsx,Sidebar.tsx,Container.tsx}
+UI/{Button.tsx,Card.tsx,Input.tsx,Select.tsx,Badge.tsx}
+styles/{globals.css,tokens.css}
+lib/{api.ts,auth
+
+
+---
+
+## OUTPUT REQUIREMENTS
+- Output complete React + Tailwind codebase implementing the Figma layout.
+- All colors and spacing use CSS variables defined in `tokens.css`.
+- Include placeholder text and icons matching the mockup.
+- Ensure accessibility (aria labels, focus outlines).
+- Include responsive Tailwind classes for breakpoints `sm`, `md`, `lg`, `xl`.
+- Include a smoke test (`__tests__/smoke.spec.ts`) confirming render of all routes.
+
+---
+
+## TONE / PRIORITIES
+1. **Design fidelity first** — pixel-accurate reproduction of Figma spacing, typography, colors, icons.
+2. **Clean component hierarchy** — reusable, readable code.
+3. **Accessibility and responsiveness** — essential.
+4. **Ready to integrate with AWS backend** (Lambda endpoints, Cognito).
+
+OUTPUT
+Return a fully scaffolded React + Tailwind project under `/igad/frontend` containing all pages and components described above, using placeholder data and strictly following the Figma visual language.
+
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
+
+
+ROLE
+You are a senior frontend engineer. Update an existing React + TypeScript + Tailwind app (Vite) to EXACTLY match the provided visual spec. Maintain accessibility and responsiveness. Keep component reusability and tokens-first styling (no hard-coded hex where a token exists).
+
+CONTEXT
+Repo layout (already exists):
+- igad/frontend/
+  - src/styles/{tokens.css,globals.css}
+  - src/components/Layout/{Header.tsx,Sidebar.tsx,Container.tsx}
+  - src/components/UI/{Button.tsx,Card.tsx,Input.tsx,Select.tsx,Badge.tsx}
+  - src/routes/index.tsx (Landing)
+  - tailwind.config.ts
+
+DESIGN SOURCE (apply precisely)
+Use the following spec as the single source of truth for sizes, colors, radii, shadows, layout, and copy. Where absolute positioning is present, translate to responsive Flex/Grid with matching visual results.
+
+[BEGIN VISUAL SPEC]
+AI-Powered Agriculture Platform (Copy)
+Canvas: width 1399px, height 1742px, bg #FFFFFF
+
+HERO "Container" (top section):
+- Position: top (full width)
+- Padding: 48px top / 75.6px sides / 0.8px bottom
+- BG: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)
+- Bottom border: 0.8px solid #DCFCE7
+- Logo image: 202.81×96 at top center area
+- H1 (centered): "AI-Powered Agricultural Intelligence Hub"
+  - font: Arial, 400, 48px, line-height 48px, letter-spacing -1.2px, color #016630
+- Paragraph (centered, below): "Empowering agricultural experts across the IGAD re…"
+  - font: Arial, 400, 20px, line-height 32px, color #008236
+- Tagline card (centered):
+  - size: 896×188.1; padding-left: 32; gap: 40
+  - bg: rgba(255,255,255,0.8); border: 0.8px solid #B9F8CF; radius: 14px
+  - shadow: 0 10px 15px -3 rgba(0,0,0,.1), 0 4px 6px -4 rgba(0,0,0,.1)
+  - "PEACE, PROSPERITY AND REGIONAL INTEGRATION" (centered 16px/24px, color #016630) with 48×2 dividers (left & right) in #00A63E
+  - Supporting line (centered 18px/29px, color #364153)
+
+SECTION "AI-Powered Tools & Services":
+- H2 (centered): 30px/36px, color #016630
+- Subtext (centered): 18px/28px, color #4A5565
+- Grid area: 3 cards per row desktop; each card 362.66×~323 (varies)
+- General card style (unless overridden):
+  - bg #FFFFFF (some at 0.75 opacity)
+  - border 1.6px solid #E5E7EB or #B9F8CF (per spec)
+  - radius 14px
+- Inside card:
+  - Icon container 64×64, bg #F3F4F6 or #DCFCE7, radius 14px
+  - Title 20px/28px, color #101828
+  - Body 16px/26px, color #4A5565
+  - Primary button style (active): 36px height, bg #00A63E, 8px radius, text #FFFFFF + 16px arrow icon
+  - Secondary/disabled button style (coming soon): 36px height, bg #FFFFFF 0.5 opacity, border 0.8px rgba(0,0,0,0.1), 8px radius, text #0A0A0A
+  - Availability chip (top-right of card): pill radius (full), 0.8px border
+    - "Available": bg #DCFCE7, border #B9F8CF, text #016630
+    - "Coming Soon": bg #F3F4F6, border #E5E7EB, text #4A5565
+
+Cards (by name/copy):
+- Report Generator: border #E5E7EB (75% opacity on card)
+  - Desc: "Generate comprehensive agricultural and policy rep…"
+  - Button: Coming Soon (secondary)
+- Policy Analyzer: border #E5E7EB (75% opacity)
+  - Desc: "Analyze and review regional policies for agricultu…"
+  - Button: Coming Soon (secondary)
+- Proposal Writer: border #B9F8CF
+  - Icon container bg #DCFCE7, icon strokes #008236
+  - Desc: "Create compelling funding proposals for agricultur…"
+  - Button: Launch Tool (primary)
+  - Availability: "Available" badge
+- Newsletter Generator: border #B9F8CF (taller card)
+  - Icon container bg #DCFCE7, icon strokes #008236
+  - Desc: "Create engaging newsletters on agricultural innova…"
+  - Button: Launch Tool (primary)
+  - Availability: "Available" badge
+- Agribusiness Hub: border #E5E7EB (75% opacity)
+  - Desc: "Connect with agribusiness development opportunitie…"
+  - Button: Coming Soon (secondary)
+
+FOOTER BAR:
+- Full-width container at bottom, height 52
+- bg #016630; padding: 0 16px; content centered
+- Line 1 (centered, 16px/24px, color #DCFCE7): "© 2024 IGAD - Intergovernmental Authority on Devel…"
+- Line 2 (centered, 14px/20px, color #B9F8CF): "Advancing agricultural innovation and regional int…"
+
+Floating CTA (right side, mid-screen):
+- 121.54×56 button
+- bg #155DFC; 8px radius; white icon + text "View Docs"
+- Elevation: same hero card shadow
+[END VISUAL SPEC]
+
+DESIGN SYSTEM TOKENIZATION (update src/styles/tokens.css)
+Define (or update) CSS variables, then map them in tailwind.config.ts (theme.extend.colors, borderRadius, boxShadow, spacing). Use these exact values:
+--color-primary: #016630;
+--color-accent: #00A63E;
+--color-accent-2: #008236;
+--color-surface: #FFFFFF;
+--color-muted: #F3F4F6;
+--color-muted-2: #DCFCE7;
+--color-border: #E5E7EB;
+--color-border-accent: #B9F8CF;
+--color-text: #101828;
+--color-text-2: #4A5565;
+--color-text-3: #364153;
+--color-hero-grad-start: #F0FDF4;
+--color-hero-grad-end: #ECFDF5;
+--color-cta: #155DFC;
+
+--radius-card: 14px;
+--radius-button: 8px;
+
+--shadow-card: 0px 10px 15px -3px rgba(0,0,0,0.1), 0px 4px 6px -4px rgba(0,0,0,0.1);
+
+TYPOGRAPHY
+- Use font stack `"Arial", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif`.
+- Map text sizes to Tailwind utilities close to spec:
+  - H1: text-[48px]/[48px] tracking-[-0.03em]
+  - H2: text-[30px]/[36px]
+  - Lead: text-[20px]/[32px]
+  - Body: text-[16px]/[26px]
+  - Small: text-[14px]/[20px]
+
+RESPONSIVE RULES
+- Desktop (≥1280px): 3-column card grid, centered container width ~1152px
+- Tablet (≥768px & <1280px): 2-column grid
+- Mobile (<768px): 1-column; hero elements stack; sidebar collapses (if present)
+- Replace absolute positioning with flex/grid while preserving visual alignment.
+
+IMPLEMENTATION TASKS
+1) Update `tokens.css` with the variables above; ensure tailwind config consumes them (extend colors + radii + shadows). If not present, add `theme.extend` mapping accordingly.
+2) HERO in `routes/index.tsx`:
+   - Wrapper with gradient bg `bg-[linear-gradient(135deg,var(--color-hero-grad-start)_0%,var(--color-hero-grad-end)_100%)]` and bottom border `border-b` using `--color-muted-2`.
+   - Centered logo, H1, lead paragraph, and the "tagline card" with dividers and centered text per spec.
+3) TOOLS SECTION:
+   - Add H2 + subtext centered.
+   - Implement a responsive grid for 5 cards with card variants:
+     - variant="available" → border `--color-border-accent`, icon container bg `--color-muted-2`, strokes `--color-accent-2`, primary button.
+     - variant="soon" → border `--color-border`, 75% opacity card, secondary button, "Coming Soon" badge.
+4) UI COMPONENTS:
+   - `<Card variant="available|soon">` applies correct border/opacity and includes a `<Chip>` (Available/Coming Soon).
+   - `<Button variant="primary|secondary">`
+     - primary: bg `--color-accent`, text white, 8px radius, includes arrow icon (16px) in white.
+     - secondary: bg white @ 0.5 opacity, border 0.8px rgba(0,0,0,0.1), text #0A0A0A.
+   - `<Badge>` pill style with borders per spec.
+5) FOOTER:
+   - Full-width bar with bg `--color-primary` and two centered lines with exact colors/size.
+6) FLOATING CTA:
+   - Fixed position at right ~mid-height, size 121.54×56, bg `--color-cta`, white icon+text "View Docs", same shadow as hero card.
+
+ACCESSIBILITY
+- Headings in semantic order (h1, h2).
+- Buttons have accessible names and focus states.
+- Sufficient contrast for text on gradients/backgrounds.
+
+DELIVERABLES (RETURN AS TEXT)
+- Updated files (full content):
+  - src/styles/tokens.css
+  - tailwind.config.ts (only the changed parts if already present)
+  - src/routes/index.tsx (full)
+  - src/components/UI/{Button.tsx,Card.tsx,Badge.tsx} (full)
+- For any additional component you modify (Header, Container, etc.), include full file content.
+- A short DIFF summary (paths + key changes).
+- NOTE any deviations where pixel perfection required tiny Tailwind tweaks.
+
+ACCEPTANCE CRITERIA
+- Visual parity to spec (spacing, colors, radii, shadows, type sizes).
+- Cards render with the right variants (“Available” vs “Coming Soon”).
+- Hero gradient, tagline card, and dividers exactly styled.
+- Footer matches text, sizes, and colors.
+- Floating “View Docs” CTA present with correct elevation.
+- No absolute positioning unless unavoidable; layout responsive as defined.
+
+--------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------
