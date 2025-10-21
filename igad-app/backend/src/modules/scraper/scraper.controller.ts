@@ -11,7 +11,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt.guard';
+import { JwtAuthGuard, JwtRoleGuard } from '../auth/jwt.guard';
 import { ScraperService } from './scraper.service';
 import { CreateScrapingJobDto, UpdateScrapingJobDto, ScrapingJobQueryDto } from '../../dto';
 
@@ -38,6 +38,7 @@ export class ScraperController {
   }
 
   @Post('jobs')
+  @UseGuards(new JwtRoleGuard(['ADMIN']))
   @ApiOperation({ summary: 'Create a new scraping job' })
   @ApiResponse({ status: 201, description: 'Scraping job created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
@@ -66,6 +67,7 @@ export class ScraperController {
   }
 
   @Post('jobs/:id/run')
+  @UseGuards(new JwtRoleGuard(['ADMIN']))
   @ApiOperation({ summary: 'Trigger immediate execution of scraping job' })
   @ApiResponse({ status: 200, description: 'Scraping job triggered successfully' })
   async runJob(@Param('id') id: string, @Request() req) {

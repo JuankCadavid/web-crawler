@@ -1,5 +1,4 @@
 import React from 'react';
-import { Layout } from '../components/Layout/Layout';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
 import { Badge } from '../components/UI/Badge';
@@ -120,7 +119,7 @@ const ActivityItem: React.FC<{ activity: RecentActivityItem }> = ({ activity }) 
         <p className="text-sm font-medium text-text-primary truncate">{activity.title}</p>
         <p className="text-xs text-text-secondary">{activity.timestamp}</p>
       </div>
-      <Badge variant={activity.status === 'completed' ? 'success' : activity.status === 'in-progress' ? 'warning' : 'error'}>
+      <Badge variant={activity.status === 'completed' ? 'success' : activity.status === 'in-progress' ? 'warning' : 'destructive'}>
         {activity.status}
       </Badge>
     </div>
@@ -129,10 +128,9 @@ const ActivityItem: React.FC<{ activity: RecentActivityItem }> = ({ activity }) 
 
 export default function Dashboard() {
   return (
-    <Layout title="Dashboard">
-      <div className="space-y-8">
-        {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-primary to-secondary rounded-card p-8 text-white">
+    <div className="space-y-8">
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-r from-primary to-secondary rounded-card p-8 text-white">
           <div className="max-w-3xl">
             <h1 className="text-3xl font-semibold mb-4">
               Welcome to IGAD Innovations Hub
@@ -259,6 +257,6 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 }

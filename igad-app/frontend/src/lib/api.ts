@@ -1,3 +1,5 @@
+import { authService } from './auth';
+
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'https://qnfraqu65blpnaqgab3yxtwehy0avhox.lambda-url.us-east-1.on.aws';
 
 class ApiClient {
@@ -7,12 +9,26 @@ class ApiClient {
     this.baseURL = baseURL;
   }
 
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const session = await authService.getCurrentSession();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (session?.idToken) {
+      headers['Authorization'] = `Bearer ${session.idToken}`;
+    }
+    
+    return headers;
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
+    const authHeaders = await this.getAuthHeaders();
     
     const config: RequestInit = {
       headers: {
-        'Content-Type': 'application/json',
+        ...authHeaders,
         ...options.headers,
       },
       ...options,

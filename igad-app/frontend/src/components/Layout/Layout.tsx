@@ -8,7 +8,7 @@ interface LayoutProps {
   breadcrumb?: string;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumb }) => {
+export const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
@@ -16,7 +16,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, breadcrumb }) =
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title={title} breadcrumb={breadcrumb} />
+        <Header />
         
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto">

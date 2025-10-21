@@ -1,0 +1,12 @@
+version = 0.1
+    [default]
+    [default.deploy]
+    [default.deploy.parameters]
+    stack_name = "igad-hub-test"
+    resolve_s3 = true
+    confirm_changeset = false
+    capabilities = "CAPABILITY_IAM"
+    profile = "IBD-DEV"
+    region = "us-east-1"
+    template_file = "templates/template.yaml"
+    

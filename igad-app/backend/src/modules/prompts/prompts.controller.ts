@@ -11,7 +11,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt.guard';
+import { JwtAuthGuard, JwtRoleGuard } from '../auth/jwt.guard';
 import { PromptsService } from './prompts.service';
 import { CreatePromptDto, UpdatePromptDto, PromptQueryDto } from '../../dto';
 
@@ -38,6 +38,7 @@ export class PromptsController {
   }
 
   @Post()
+  @UseGuards(new JwtRoleGuard(['ADMIN']))
   @ApiOperation({ summary: 'Create a new prompt template' })
   @ApiResponse({ status: 201, description: 'Prompt template created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
@@ -46,6 +47,7 @@ export class PromptsController {
   }
 
   @Put(':id')
+  @UseGuards(new JwtRoleGuard(['ADMIN']))
   @ApiOperation({ summary: 'Update an existing prompt template' })
   @ApiResponse({ status: 200, description: 'Prompt template updated successfully' })
   @ApiResponse({ status: 404, description: 'Prompt template not found' })

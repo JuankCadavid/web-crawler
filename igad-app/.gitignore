@@ -98,18 +98,6 @@ jspm_packages/
 
 # AWS SAM
 .aws-sam/
-samconfig.toml
-
-# Terraform
-*.tfstate
-*.tfstate.*
-.terraform/
-.terraform.lock.hcl
-
-# CDK
-cdk.out/
-*.js.map
-*.d.ts
 
 # Local development
 .vite/

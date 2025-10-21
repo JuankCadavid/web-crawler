@@ -11,7 +11,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt.guard';
+import { JwtAuthGuard, JwtRoleGuard } from '../auth/jwt.guard';
 import { NewslettersService } from './newsletters.service';
 import { CreateNewsletterDto, UpdateNewsletterDto, NewsletterQueryDto } from '../../dto';
 

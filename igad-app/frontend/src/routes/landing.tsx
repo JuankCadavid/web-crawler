@@ -1,5 +1,5 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
+import { LandingHeader } from '../components/Layout/LandingHeader';
 
 const ToolCard: React.FC<{
   title: string;
@@ -62,6 +62,7 @@ const ToolCard: React.FC<{
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
+      <LandingHeader />
       {/* Hero Section */}
       <div className="bg-hero-gradient border-b border-border-hero">
         <div className="max-w-container mx-auto px-16 py-12">

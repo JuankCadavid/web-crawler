@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Layout } from '../components/Layout/Layout';
+import { useState } from 'react';
+
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
 import { Input } from '../components/UI/Input';
@@ -69,9 +69,8 @@ This week we highlight the **Smart Pastoralism Initiative**, which combines sate
   };
 
   return (
-    <Layout title="Newsletter Generator" breadcrumb="Tools">
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header */}
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* Header */}
         <div className="text-center space-y-4">
           <h1 className="text-3xl font-semibold text-text-primary">
             AI Newsletter Generator
@@ -198,6 +197,6 @@ This week we highlight the **Smart Pastoralism Initiative**, which combines sate
           </div>
         </Card>
       </div>
-    </Layout>
+    </div>
   );
 }
